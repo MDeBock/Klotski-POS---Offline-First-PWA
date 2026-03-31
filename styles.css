@@ -1,0 +1,43 @@
+/* Custom CSS para MVP POS Klotski */
+
+/* Resets y comportamiento base para evitar rebotes en iOS/Android */
+body, html {
+  margin: 0; 
+  padding: 0; 
+  height: 100%; 
+  overflow: hidden;
+  touch-action: manipulation; /* Previene doble tap zoom */
+  -webkit-tap-highlight-color: transparent; /* Quita el cuadro azul al tocar */
+}
+
+/* Gestión de Vistas (SPA feeling) */
+.view-active {
+  display: flex !important;
+}
+.view-hidden {
+  display: none !important;
+}
+
+/* Ocultar scrollbars pero permitir scroll */
+.no-scrollbar::-webkit-scrollbar { 
+  display: none; 
+}
+.no-scrollbar { 
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+/* Efecto Klotski 3D para Botones */
+.btn-3d {
+  box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-3d:active {
+  box-shadow: 0 0px 0 rgba(0,0,0,0.15);
+  transform: translateY(6px);
+}
+
+/* Bordes para estado de cámara */
+.border-active-laser {
+  border-color: #10B981 !important; /* Tailwind green-500 */
+}

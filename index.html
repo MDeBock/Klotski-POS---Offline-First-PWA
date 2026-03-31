@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VTASCAN</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <script>
+    tailwind.config = { theme: { extend: { colors: { klo: { green: '#10B981', blue: '#3B82F6', yellow: '#F59E0B', orange: '#F97316', red: '#EF4444', pink: '#EC4899', bg: '#F3F4F6' } } } } }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-klo-bg text-gray-800 antialiased selection:bg-blue-200">
+
+  <div id="view-home" class="view-active p-4 h-full flex flex-col gap-4">
+    <div class="mb-2">
+      <h1 class="text-3xl font-black text-gray-800 tracking-tight">Mi Punto de Venta</h1>
+      <p class="text-sm font-bold text-gray-500">Turno Actual: $<span id="home-total-caja">0.00</span></p>
+    </div>
+
+    <div class="grid grid-cols-2 grid-rows-4 gap-4 flex-1 pb-4">
+      <button onclick="app.navTo('view-scanner')" class="col-span-2 row-span-2 bg-klo-green rounded-3xl p-6 shadow-md btn-3d flex flex-col justify-between items-start text-white transition-transform active:scale-95">
+        <span class="text-6xl">🛒</span>
+        <div class="text-left"><h2 class="text-4xl font-black tracking-widest">ESCANEAR</h2><p class="text-green-100 font-bold mt-1 text-lg">Ir al mostrador y cobrar</p></div>
+      </button>
+
+      <button onclick="app.navTo('view-caja')" class="bg-klo-blue rounded-3xl p-4 shadow-md btn-3d flex flex-col justify-between items-start text-white transition-transform active:scale-95">
+        <span class="text-4xl">💰</span><h2 class="text-2xl font-black mt-2">CAJA</h2>
+      </button>
+
+      <button onclick="app.navTo('view-inventory')" class="bg-klo-yellow rounded-3xl p-4 shadow-md btn-3d flex flex-col justify-between items-start text-white transition-transform active:scale-95">
+        <span class="text-4xl">📦</span><h2 class="text-2xl font-black mt-2">INVENTARIO</h2>
+      </button>
+
+      <button onclick="app.confirmCierreCaja()" class="bg-klo-red rounded-3xl p-4 shadow-md btn-3d flex flex-col justify-between items-start text-white transition-transform active:scale-95">
+        <span class="text-4xl">🔒</span><h2 class="text-xl font-black mt-2 leading-tight">CIERRE<br>DE CAJA</h2>
+      </button>
+
+      <button onclick="app.requestPin('view-historial')" class="bg-klo-pink rounded-3xl p-4 shadow-md btn-3d flex flex-col justify-between items-start text-white transition-transform active:scale-95">
+        <span class="text-4xl">🕰️</span><h2 class="text-xl font-black mt-2 leading-tight">ADMIN<br>& EXPORT</h2>
+      </button>
+    </div>
+  </div>
+
+  <div id="view-scanner" class="view-hidden flex-col h-full">
+    <div class="bg-white p-4 flex items-center shadow-sm z-10">
+      <button onclick="app.navTo('view-home')" class="bg-gray-100 text-gray-800 p-3 rounded-xl font-black mr-4 active:bg-gray-200">🔙 Volver</button>
+      <div class="flex-1 text-right">
+        <div class="text-xs text-gray-400 font-bold uppercase">Total a Cobrar</div>
+        <button onclick="app.openCart()" class="text-3xl font-black text-klo-green active:opacity-70">$<span id="scan-total">0.00</span></button>
+      </div>
+    </div>
+    <div class="flex-1 m-4 relative rounded-3xl overflow-hidden shadow-inner bg-black border-4 border-gray-200" id="cam-container-sales">
+      <div id="reader-sales" class="w-full h-full object-cover"></div>
+      <div id="overlay-sales" class="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none"><div class="text-white font-bold bg-black/60 px-4 py-2 rounded-xl">ESPERANDO DISPARO</div></div>
+    </div>
+    <div class="px-4 pb-2">
+      <button id="btn-trigger-sales" onclick="app.fireLaser('sales')" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-2xl btn-3d flex items-center justify-center gap-2 mb-3">🎯 DISPARAR LÁSER</button>
+      <button onclick="app.openManualCatalog()" class="w-full bg-gray-800 text-white py-3 rounded-2xl font-black text-lg btn-3d flex items-center justify-center gap-2">🥔 INGRESO MANUAL / GRANEL</button>
+    </div>
+    <div class="px-4 pb-4 pt-2">
+      <div class="bg-white rounded-3xl shadow-sm p-2 flex items-center justify-between border border-gray-100">
+        <button onclick="app.changeQty(-1)" class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl text-4xl font-bold active:bg-red-200">-</button>
+        <div class="flex-1 text-center"><div class="text-[10px] text-gray-400 font-bold uppercase">Cantidad Siguiente Láser</div><div id="qty-display" class="text-4xl font-black text-gray-800 mt-1">1</div></div>
+        <button onclick="app.changeQty(1)" class="w-16 h-16 bg-green-100 text-green-700 rounded-2xl text-4xl font-bold active:bg-green-200">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-caja" class="view-hidden flex-col h-full bg-white">
+    <div class="bg-white p-4 flex flex-col shadow-sm border-b gap-3">
+      <div class="flex items-center">
+        <button onclick="app.navTo('view-home')" class="bg-gray-100 text-gray-800 p-3 rounded-xl font-black mr-4 active:bg-gray-200">🔙 Volver</button>
+        <h2 class="text-2xl font-black text-gray-800">Caja Actual</h2>
+      </div>
+      <button onclick="app.navTo('view-ctacte')" class="w-full bg-klo-orange text-white font-black p-4 rounded-xl shadow-md btn-3d text-lg">📔 Cuentas Corrientes (Fiados)</button>
+    </div>
+    <div class="p-4 flex space-x-2 overflow-x-auto no-scrollbar">
+      <button class="filter-caja active bg-gray-800 text-white px-4 py-2 rounded-full text-sm font-bold" onclick="app.renderCaja('all')">Todos</button>
+      <button class="filter-caja bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-bold" onclick="app.renderCaja('efectivo')">Efectivo</button>
+      <button class="filter-caja bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-bold" onclick="app.renderCaja('transferencia')">Transf</button>
+      <button class="filter-caja bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-bold" onclick="app.renderCaja('fiado')">Fiado</button>
+    </div>
+    <div id="caja-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-gray-50"></div>
+  </div>
+
+  <div id="view-ctacte" class="view-hidden flex-col h-full bg-white">
+    <div class="bg-white p-4 flex items-center shadow-sm border-b">
+      <button onclick="app.navTo('view-caja')" class="bg-gray-100 font-black p-3 rounded-xl mr-4">🔙 Caja</button>
+      <h2 class="text-xl font-black text-gray-800">Cuentas Corrientes</h2>
+    </div>
+    <div class="p-4 border-b">
+      <input type="text" id="ctacte-search" oninput="app.renderCtaCte(this.value)" placeholder="Buscar cliente deudor..." class="w-full bg-gray-100 border-2 p-3 rounded-xl outline-none focus:border-klo-orange font-semibold">
+    </div>
+    <div id="ctacte-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-gray-50"></div>
+  </div>
+
+  <div id="view-inventory" class="view-hidden flex-col h-full bg-white">
+    <div class="bg-white p-4 flex items-center shadow-sm border-b justify-between">
+      <div class="flex items-center"><button onclick="app.navTo('view-home')" class="bg-gray-100 text-gray-800 p-3 rounded-xl font-black mr-2 active:bg-gray-200">🔙</button><h2 class="text-xl font-black text-gray-800">Inventario</h2></div>
+      <div class="flex gap-2">
+        <button onclick="app.createManualProduct()" class="bg-blue-100 text-blue-700 px-3 py-3 rounded-xl font-black shadow-sm text-sm">+ Manual</button>
+        <button onclick="app.navTo('view-inventory-scanner')" class="bg-klo-yellow text-white px-3 py-3 rounded-xl font-black shadow-md text-sm">+ Scan</button>
+      </div>
+    </div>
+    <div class="p-4 border-b flex gap-2">
+      <input type="text" id="inv-search" oninput="app.renderInventory(this.value)" placeholder="Buscar producto..." class="flex-1 bg-gray-100 border-2 border-transparent p-3 rounded-xl outline-none focus:border-yellow-500 font-semibold">
+      <button onclick="app.navTo('view-edit-scanner')" class="bg-gray-800 text-white px-4 rounded-xl font-bold shadow-md">🔍</button>
+    </div>
+    <div id="inv-list" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-gray-50"></div>
+  </div>
+
+  <div id="view-inventory-scanner" class="view-hidden flex-col h-full">
+    <div class="bg-white p-4 flex items-center shadow-sm z-10"><button onclick="app.navTo('view-inventory')" class="bg-gray-100 font-black p-3 rounded-xl mr-4">🔙 Volver</button></div>
+    <div class="flex-1 m-4 relative rounded-3xl overflow-hidden bg-black border-4 border-yellow-400" id="cam-container-inv">
+      <div id="reader-inv" class="w-full h-full object-cover"></div><div id="overlay-inv" class="absolute inset-0 bg-black/50 flex items-center justify-center"><div class="text-white font-bold bg-black/60 px-4 py-2 rounded-xl">MODO CARGA</div></div>
+    </div>
+    <div class="px-4 pb-6"><button id="btn-trigger-inv" onclick="app.fireLaser('inv')" class="w-full bg-yellow-500 text-white py-4 rounded-2xl font-black text-2xl btn-3d">🎯 LÁSER DE CARGA</button></div>
+  </div>
+
+  <div id="view-edit-scanner" class="view-hidden flex-col h-full">
+    <div class="bg-white p-4 flex items-center shadow-sm z-10"><button onclick="app.navTo('view-inventory')" class="bg-gray-100 font-black p-3 rounded-xl mr-4">🔙 Volver</button><div class="font-bold text-gray-500">Buscar para Editar</div></div>
+    <div class="flex-1 m-4 relative rounded-3xl overflow-hidden bg-black border-4 border-gray-800" id="cam-container-edit">
+      <div id="reader-edit" class="w-full h-full object-cover"></div><div id="overlay-edit" class="absolute inset-0 bg-black/50 flex items-center justify-center"><div class="text-white font-bold bg-black/60 px-4 py-2 rounded-xl">MODO BÚSQUEDA</div></div>
+    </div>
+    <div class="px-4 pb-6"><button id="btn-trigger-edit" onclick="app.fireLaser('edit')" class="w-full bg-gray-800 text-white py-4 rounded-2xl font-black text-2xl btn-3d">🔍 BUSCAR PRODUCTO</button></div>
+  </div>
+
+  <div id="view-historial" class="view-hidden flex-col h-full bg-white">
+    <div class="bg-white p-4 flex flex-col shadow-sm border-b gap-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center"><button onclick="app.closeAdminSession()" class="bg-gray-100 font-black p-3 rounded-xl mr-4 text-red-600">🔒 Bloquear</button><h2 class="text-2xl font-black text-gray-800">Admin</h2></div>
+        <button onclick="app.openChangePin()" class="bg-gray-200 text-gray-700 px-3 py-2 rounded-xl font-bold text-xs shadow-sm">⚙️ Cambiar PIN</button>
+      </div>
+      
+      <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
+        <div class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Descargas y Reportes</div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button onclick="app.exportCSV('productos')" class="bg-blue-100 text-blue-800 p-2 rounded-lg font-bold text-sm">📊 Excel Inventario</button>
+          <button onclick="app.exportCSV('ventas')" class="bg-green-100 text-green-800 p-2 rounded-lg font-bold text-sm">📊 Excel Ventas</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 border-t pt-2 mt-2">
+          <button onclick="app.exportEncryptedBackup()" class="bg-klo-pink text-white p-2 rounded-lg font-bold text-sm shadow-sm">📥 Backup Seguro</button>
+          <input type="file" id="file-import" accept=".bak,.json" class="hidden" onchange="app.importEncryptedBackup(event)">
+          <button onclick="document.getElementById('file-import').click()" class="bg-gray-800 text-white p-2 rounded-lg font-bold text-sm shadow-sm">🔄 Restaurar</button>
+        </div>
+      </div>
+    </div>
+    <div class="p-4 pb-0 text-xs font-bold text-gray-400 uppercase tracking-widest">Historial de Turnos</div>
+    <div id="historial-list" class="flex-1 overflow-y-auto no-scrollbar p-4 pt-2 space-y-3 bg-white"></div>
+  </div>
+
+  <div id="modal-setup-pin" class="hidden fixed inset-0 bg-blue-900/95 z-[200] flex items-center justify-center backdrop-blur-md">
+    <div class="bg-white w-80 rounded-3xl p-6 flex flex-col items-center shadow-2xl">
+      <div class="text-6xl mb-2">👋</div>
+      <h2 class="text-2xl font-black mb-2 text-gray-800 text-center">Bienvenido al POS</h2>
+      <p class="text-sm text-gray-500 mb-6 text-center">Crea un PIN maestro de 4 dígitos para proteger tu base de datos y tus reportes.</p>
+      <input type="password" id="setup-pin-input" class="w-full bg-gray-100 border-2 border-gray-200 p-4 rounded-xl text-3xl font-black text-center tracking-widest outline-none focus:border-blue-500 mb-6" inputmode="numeric" maxlength="4" placeholder="••••">
+      <button onclick="app.saveNewPin()" class="w-full p-4 rounded-xl bg-blue-600 text-white font-black shadow-md text-xl">Guardar PIN</button>
+    </div>
+  </div>
+
+  <div id="modal-pin" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center backdrop-blur-md">
+    <div class="bg-white w-80 rounded-3xl p-6 flex flex-col items-center">
+      <h2 class="text-2xl font-black mb-2 text-gray-800">Acceso Admin</h2>
+      <p class="text-sm text-gray-500 mb-6 text-center">Ingrese PIN de Administrador</p>
+      <input type="password" id="pin-input" class="w-full bg-gray-100 border-2 border-gray-200 p-4 rounded-xl text-3xl font-black text-center tracking-widest outline-none focus:border-pink-500 mb-6" inputmode="numeric" maxlength="4">
+      <div class="grid grid-cols-2 gap-3 w-full">
+        <button onclick="app.cancelPin()" class="p-4 rounded-xl bg-gray-100 font-black text-gray-600">Cancelar</button>
+        <button onclick="app.verifyPin()" class="p-4 rounded-xl bg-klo-pink text-white font-black shadow-md">Ingresar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-change-pin" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center backdrop-blur-md">
+    <div class="bg-white w-80 rounded-3xl p-6 flex flex-col items-center">
+      <h2 class="text-2xl font-black mb-4 text-gray-800">Cambiar PIN</h2>
+      <input type="password" id="cp-old" class="w-full bg-gray-100 border-2 border-gray-200 p-3 rounded-xl text-xl font-black text-center tracking-widest outline-none mb-3" inputmode="numeric" maxlength="4" placeholder="PIN Actual">
+      <input type="password" id="cp-new" class="w-full bg-blue-50 border-2 border-blue-200 p-3 rounded-xl text-xl font-black text-center tracking-widest outline-none mb-6" inputmode="numeric" maxlength="4" placeholder="Nuevo PIN">
+      <div class="grid grid-cols-2 gap-3 w-full">
+        <button onclick="document.getElementById('modal-change-pin').classList.add('hidden')" class="p-4 rounded-xl bg-gray-100 font-black text-gray-600">Cancelar</button>
+        <button onclick="app.saveChangedPin()" class="p-4 rounded-xl bg-blue-600 text-white font-black shadow-md">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-cart" class="hidden fixed inset-0 bg-black/70 z-[50] flex items-end justify-center backdrop-blur-sm">
+    <div class="bg-white w-full h-[85vh] rounded-t-3xl p-5 flex flex-col">
+      <div class="flex justify-between items-center mb-4"><h2 class="text-3xl font-black">Carrito</h2><button onclick="app.closeCart()" class="w-10 h-10 bg-gray-100 rounded-full font-bold">✕</button></div>
+      <div id="cart-items" class="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-4"></div>
+      <div class="pt-4 border-t"><button onclick="app.openPayment()" class="w-full bg-klo-green text-white py-5 rounded-2xl font-black text-2xl shadow-lg">COBRAR $<span id="cart-btn-total">0</span></button></div>
+    </div>
+  </div>
+
+  <div id="modal-payment" class="hidden fixed inset-0 bg-black/90 z-[60] flex items-end justify-center backdrop-blur-md">
+    <div class="bg-white w-full rounded-t-3xl p-5 flex flex-col max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <h2 class="text-2xl font-black">Cobrar Venta</h2>
+        <div class="text-right"><div class="text-xs font-bold text-gray-500 uppercase">Total</div><div class="text-3xl font-black text-blue-600">$<span id="pay-total-display">0.00</span></div></div>
+      </div>
+
+      <button onclick="app.fastCashPayment()" class="w-full bg-green-500 text-white py-4 rounded-2xl font-black text-xl mb-6 shadow-md active:bg-green-600 transition-colors">
+        💵 COBRO RÁPIDO: TODO EFECTIVO
+      </button>
+      
+      <div class="space-y-4 mb-6">
+        <div class="flex items-center bg-green-50 p-3 rounded-2xl border border-green-200">
+          <div class="w-10 text-2xl">💵</div>
+          <div class="flex-1"><label class="text-xs font-bold text-green-800 uppercase">Efectivo</label><input type="number" id="pay-cash-in" oninput="app.calcSplitPayment()" placeholder="0.00" class="w-full bg-transparent font-black text-2xl outline-none text-green-900" step="any"></div>
+        </div>
+        <div class="flex flex-col bg-blue-50 p-3 rounded-2xl border border-blue-200 gap-2">
+          <div class="flex items-center">
+            <div class="w-10 text-2xl">🏦</div><div class="flex-1"><label class="text-xs font-bold text-blue-800 uppercase">Transferencia</label><input type="number" id="pay-trans-in" oninput="app.calcSplitPayment()" placeholder="0.00" class="w-full bg-transparent font-black text-2xl outline-none text-blue-900" step="any"></div>
+          </div>
+          <input type="text" id="pay-trans-ref" placeholder="Ref / Titular" class="w-full p-2 text-sm rounded-lg border outline-none">
+        </div>
+        <div class="flex flex-col bg-yellow-50 p-3 rounded-2xl border border-yellow-200 gap-2">
+          <div class="flex items-center">
+            <div class="w-10 text-2xl">📝</div><div class="flex-1"><label class="text-xs font-bold text-yellow-800 uppercase">Fiado</label><input type="number" id="pay-fiado-in" oninput="app.calcSplitPayment()" placeholder="0.00" class="w-full bg-transparent font-black text-2xl outline-none text-yellow-900" step="any"></div>
+          </div>
+          <input type="text" id="pay-fiado-ref" placeholder="Cliente / Nro" class="w-full p-2 text-sm rounded-lg border outline-none">
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center bg-gray-800 p-4 rounded-2xl mb-4 text-white">
+        <div class="font-bold text-sm uppercase tracking-widest">Restante</div><div class="font-black text-3xl">$<span id="pay-remaining">0.00</span></div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <button onclick="app.closePayment()" class="p-4 rounded-xl bg-gray-100 font-black text-gray-600 col-span-1">Atrás</button>
+        <button id="btn-confirm-payment" onclick="app.confirmSplitPayment()" class="p-4 rounded-xl bg-gray-400 text-white font-black text-xl col-span-2 transition-colors shadow-md" disabled>Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-pay-debt" class="hidden fixed inset-0 bg-black/90 z-[70] flex items-end justify-center backdrop-blur-md">
+    <div class="bg-white w-full rounded-t-3xl p-6 flex flex-col">
+      <h2 class="text-2xl font-black mb-1 text-center">Saldar Deuda</h2>
+      <p id="pd-name" class="text-gray-500 font-bold text-center mb-1 text-lg"></p>
+      <p class="text-klo-orange font-black text-3xl text-center mb-6">Deuda: $<span id="pd-debt">0.00</span></p>
+      <label class="block text-sm font-bold text-gray-600 mb-2">Monto que entrega el cliente</label>
+      <input type="number" id="pd-amount" step="any" placeholder="0.00" class="w-full bg-gray-50 border-2 border-orange-200 p-4 rounded-2xl text-3xl font-black text-center outline-none focus:border-klo-orange mb-4">
+      <label class="block text-sm font-bold text-gray-600 mb-2">Método de Pago</label>
+      <select id="pd-method" class="w-full bg-gray-50 border-2 p-4 rounded-2xl text-xl font-bold outline-none focus:border-blue-500 mb-6">
+        <option value="efectivo">💵 Efectivo</option>
+        <option value="transferencia">🏦 Transferencia</option>
+      </select>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="document.getElementById('modal-pay-debt').classList.add('hidden')" class="p-4 rounded-xl bg-gray-100 font-black text-gray-600">Cancelar</button>
+        <button onclick="app.confirmDebtPayment()" class="p-4 rounded-xl bg-klo-orange text-white font-black shadow-md text-xl">Cobrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-catalog" class="hidden fixed inset-0 bg-black/80 z-[55] flex items-end justify-center"><div class="bg-white w-full h-[85vh] rounded-t-3xl p-5 flex flex-col"><div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-black">Catálogo Manual</h2><button onclick="document.getElementById('modal-catalog').classList.add('hidden')" class="w-10 h-10 bg-gray-100 rounded-full font-bold">✕</button></div><input type="text" id="catalog-search" oninput="app.renderCatalog(this.value)" placeholder="Buscar papas..." class="w-full bg-gray-100 border p-3 rounded-xl outline-none mb-3"><div id="catalog-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4"></div></div></div>
+  <div id="modal-qty-input" class="hidden fixed inset-0 bg-black/90 z-[65] flex items-end justify-center"><div class="bg-white w-full rounded-t-3xl p-6 flex flex-col"><h2 id="mq-title" class="text-2xl font-black mb-1 text-center">Producto</h2><p id="mq-price" class="text-blue-600 font-bold text-center mb-6"></p><input type="number" id="mq-input" step="any" placeholder="Ej: 1.5" class="w-full bg-gray-50 border-2 p-5 rounded-2xl text-3xl font-black text-center outline-none mb-6"><div class="grid grid-cols-2 gap-3"><button onclick="document.getElementById('modal-qty-input').classList.add('hidden')" class="p-4 rounded-xl bg-gray-100 font-black">Cancelar</button><button onclick="app.confirmManualAdd()" class="p-4 rounded-xl bg-green-500 text-white font-black text-xl">Sumar</button></div></div></div>
+  <div id="modal-product-form" class="hidden fixed inset-0 bg-black/80 z-[70] flex items-end justify-center"><div class="bg-white w-full rounded-t-3xl p-6 flex flex-col max-h-[90vh] overflow-y-auto no-scrollbar"><h2 id="prod-form-title" class="text-2xl font-black mb-2">Nuevo Producto</h2><p class="text-sm text-gray-500 mb-4 bg-gray-100 p-2 rounded-lg font-mono text-center">Cód: <span id="prod-form-code" class="text-black font-bold"></span></p><div class="space-y-3 flex-1"><input type="text" id="pf-marca" placeholder="Marca (Opcional)" class="w-full bg-gray-50 border p-4 rounded-xl text-lg font-semibold outline-none"><input type="text" id="pf-nombre" placeholder="Nombre (Ej: Papas)" class="w-full bg-gray-50 border p-4 rounded-xl text-lg font-semibold outline-none"><input type="text" id="pf-pres" placeholder="Presentación (Ej: Kg, Uni)" class="w-full bg-gray-50 border p-4 rounded-xl text-lg font-semibold outline-none"><input type="number" id="pf-precio" placeholder="Precio ($)" step="any" class="w-full bg-gray-50 border p-4 rounded-xl text-xl font-black text-blue-600 outline-none"></div><div class="grid grid-cols-2 gap-3 mt-6"><button onclick="app.closeProductForm()" class="p-4 rounded-xl bg-gray-100 font-black">Cancelar</button><button onclick="app.saveProductForm()" class="p-4 rounded-xl bg-blue-600 text-white font-black">Guardar</button></div></div></div>
+  <div id="modal-historial-detail" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-end justify-center"><div class="bg-white w-full h-[80vh] rounded-t-3xl p-5 flex flex-col"><div class="flex justify-between items-center border-b pb-4 mb-4"><div><h2 class="text-2xl font-black">Detalle</h2><p id="hd-date" class="text-sm text-gray-500 font-bold"></p></div><button onclick="document.getElementById('modal-historial-detail').classList.add('hidden')" class="w-10 h-10 bg-gray-100 rounded-full font-bold">✕</button></div><div id="hd-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4"></div><div class="pt-4 text-right"><div class="text-sm text-gray-500 font-bold">Total</div><div class="text-3xl font-black">$<span id="hd-total">0.00</span></div></div></div></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
