@@ -27,6 +27,6 @@ Este proyecto demuestra una arquitectura **100% Frontend (Serverless)**, utiliza
 
 Al ser una arquitectura pura de Frontend, no requiere de Node.js, npm, ni configuración de servidores.
 
-1. Clona este repositorio: `git clone https://github.com/tu-usuario/klotski-pos.git`
+1. Clona este repositorio: `git clone https://github.com/MDeBock/klotski-pos.git`
 2. Abre el archivo `index.html` en tu navegador y simula la vista de dispositivo móvil.
-3. Para la experiencia completa, sube la carpeta a servicios gratuitos como Netlify o GitHub Pages y ábrela directamente desde tu smartphone.
+3. Para la experiencia completa, el proyecto esta desplegado en https://vtascan.netlify.app/ , puedes abrirla directamente desde tu smartphone.
