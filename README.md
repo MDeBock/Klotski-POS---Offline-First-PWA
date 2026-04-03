@@ -6,6 +6,8 @@ Un Producto Mínimo Viable (MVP) de un sistema de Punto de Venta (POS) diseñado
 
 Este proyecto demuestra una arquitectura **100% Frontend (Serverless)**, utilizando el almacenamiento local del navegador para mantener la persistencia de datos y criptografía avanzada para la seguridad de la información.
 
+> **Roadmap y Arquitectura:** Este repositorio contiene la **Fase 1 (Capa Cliente Offline)** del proyecto. Actualmente, el sistema se encuentra validando operaciones en comercios reales, sirviendo como base para la **Fase 2**, donde se está desarrollando la API y la arquitectura central del servidor utilizando **Python y Django** para la sincronización de múltiples sucursales en la nube.
+
 ##  Funcionalidades Principales
 
 * ** Escáner de Código de Barras Nativo:** Utiliza la cámara del dispositivo para identificar productos rápidamente.
